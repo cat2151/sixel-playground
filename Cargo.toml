@@ -4,5 +4,6 @@ members = [
     "crates/sixel-encoder",
     "apps/wav-viewer",
     "apps/ym2151-envelope",
+    "apps/ym2151-envelope-ratatui",
 ]
 resolver = "2"
