@@ -1,0 +1,7 @@
+[package]
+name = "ym2151-envelope-core"
+version = "0.1.0"
+edition = "2021"
+description = "Shared YM2151 envelope argument parsing and simulation logic"
+
+[dependencies]
