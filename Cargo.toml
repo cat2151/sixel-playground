@@ -6,6 +6,7 @@ members = [
     "apps/wav-viewer-ratatui",
     "apps/ym2151-envelope",
     "apps/ym2151-envelope-ratatui",
-    "crates/ym2151-envelope-core", "crates/wav-ratatui-image",
+    "crates/ym2151-envelope-core",
+    "crates/wav-ratatui-image",
 ]
 resolver = "2"
