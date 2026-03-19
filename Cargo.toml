@@ -1,0 +1,8 @@
+[workspace]
+members = [
+    "crates/wave-chart",
+    "crates/sixel-encoder",
+    "apps/wav-viewer",
+    "apps/ym2151-envelope",
+]
+resolver = "2"

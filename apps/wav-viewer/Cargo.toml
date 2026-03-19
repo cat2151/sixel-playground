@@ -1,0 +1,14 @@
+[package]
+name = "wav-viewer"
+version = "0.1.0"
+edition = "2021"
+description = "TUI application for displaying WAV file waveforms using sixel graphics"
+
+[[bin]]
+name = "wav-viewer"
+path = "src/main.rs"
+
+[dependencies]
+wave-chart = { path = "../../crates/wave-chart" }
+sixel-encoder = { path = "../../crates/sixel-encoder" }
+hound = "3.5.1"

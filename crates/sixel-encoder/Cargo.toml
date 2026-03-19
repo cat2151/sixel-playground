@@ -1,0 +1,8 @@
+[package]
+name = "sixel-encoder"
+version = "0.1.0"
+edition = "2021"
+description = "Library for encoding image data as sixel strings for TUI display"
+
+[dependencies]
+icy_sixel = "0.5.0"
