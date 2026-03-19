@@ -3,6 +3,7 @@ members = [
     "crates/wave-chart",
     "crates/sixel-encoder",
     "apps/wav-viewer",
+    "apps/wav-viewer-ratatui",
     "apps/ym2151-envelope",
     "apps/ym2151-envelope-ratatui",
     "crates/ym2151-envelope-core",
