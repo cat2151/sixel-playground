@@ -1,0 +1,9 @@
+[package]
+name = "wav-ratatui-image"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+hound = "3.5.1"
+image = { version = "0.25.10", default-features = false }
+wave-chart = { path = "../wave-chart" }

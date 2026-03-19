@@ -13,8 +13,6 @@ use crossterm::{
     event::{self, Event, KeyCode},
     terminal::{disable_raw_mode, enable_raw_mode},
 };
-use hound::WavReader;
-use image::{DynamicImage, ImageBuffer, Rgba};
 use ratatui::{
     backend::CrosstermBackend,
     layout::Margin,
@@ -22,10 +20,7 @@ use ratatui::{
     Terminal,
 };
 use ratatui_image::{picker::Picker, protocol::StatefulProtocol, StatefulImage};
-use wave_chart::render_waveform;
-
-const DEFAULT_WIDTH: u32 = 800;
-const DEFAULT_HEIGHT: u32 = 300;
+use wav_ratatui_image::render_wav_as_image;
 
 struct RawModeGuard;
 
@@ -50,13 +45,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let path = &args[1];
-    let samples = read_wav(path).unwrap_or_else(|e| {
+    let image = render_wav_as_image(path).unwrap_or_else(|e| {
         eprintln!("Error reading {path}: {e}");
         process::exit(1);
     });
-
-    let rgba = render_waveform(&samples, DEFAULT_WIDTH, DEFAULT_HEIGHT);
-    let image = rgba_to_dynamic_image(rgba, DEFAULT_WIDTH, DEFAULT_HEIGHT)?;
 
     let picker = Picker::from_query_stdio().unwrap_or_else(|_| Picker::halfblocks());
     let mut protocol: StatefulProtocol = picker.new_resize_protocol(image);
@@ -92,44 +84,4 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     Ok(())
-}
-
-fn read_wav(path: &str) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
-    let mut reader = WavReader::open(path)?;
-    let spec = reader.spec();
-
-    let samples: Vec<f32> = match spec.sample_format {
-        hound::SampleFormat::Float => reader
-            .samples::<f32>()
-            .step_by(spec.channels as usize)
-            .map(|s| s.map_err(|e| Box::new(e) as Box<dyn std::error::Error>))
-            .collect::<Result<Vec<_>, _>>()?,
-        hound::SampleFormat::Int => {
-            let max = (1i64 << (spec.bits_per_sample - 1)) as f32;
-            reader
-                .samples::<i32>()
-                .step_by(spec.channels as usize)
-                .map(|s| {
-                    s.map(|v| v as f32 / max)
-                        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
-                })
-                .collect::<Result<Vec<_>, _>>()?
-        }
-    };
-
-    Ok(samples)
-}
-
-fn rgba_to_dynamic_image(
-    rgba: Vec<u8>,
-    width: u32,
-    height: u32,
-) -> Result<DynamicImage, Box<dyn std::error::Error>> {
-    let image = ImageBuffer::<Rgba<u8>, _>::from_raw(width, height, rgba).ok_or_else(|| {
-        io::Error::new(
-            io::ErrorKind::InvalidData,
-            "failed to build image buffer from rendered RGBA bytes",
-        )
-    })?;
-    Ok(DynamicImage::ImageRgba8(image))
 }
