@@ -1481,7 +1481,12 @@ version = "0.1.0"
 dependencies = [
  "sixel-encoder",
  "wave-chart",
+ "ym2151-envelope-core",
 ]
+
+[[package]]
+name = "ym2151-envelope-core"
+version = "0.1.0"
 
 [[package]]
 name = "ym2151-envelope-ratatui"
@@ -1492,6 +1497,7 @@ dependencies = [
  "ratatui",
  "ratatui-image",
  "wave-chart",
+ "ym2151-envelope-core",
 ]
 
 [[package]]

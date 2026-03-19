@@ -11,3 +11,4 @@ path = "src/main.rs"
 [dependencies]
 wave-chart = { path = "../../crates/wave-chart" }
 sixel-encoder = { path = "../../crates/sixel-encoder" }
+ym2151-envelope-core = { path = "../../crates/ym2151-envelope-core" }
