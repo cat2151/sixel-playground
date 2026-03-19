@@ -8,7 +8,7 @@
 //! | Attack | AR (0-31)| Rate at which the envelope rises         |
 //! | Decay  | D1R(0-31)| Rate at which it falls to the sustain lv |
 //! | Sustain| D1L(0-15)| Level at which decay gives way to D2     |
-//! | Sustain 2 (Release during key-on) | D2R(0-31) | Slow decay during sustain |
+//! | Sustain 2 (Decay during key-on) | D2R(0-31) | Slow decay during sustain |
 //! | Release| RR (0-15)| Rate at which it falls on key-off        |
 //!
 //! # Usage
@@ -63,11 +63,7 @@ fn main() {
     let points = simulate_envelope(&params);
 
     // Render line chart → RGBA image
-    let title = format!(
-        "YM2151 Envelope  AR={} D1R={} D1L={} D2R={} RR={}",
-        params.ar, params.d1r, params.d1l, params.d2r, params.rr
-    );
-    let rgba = render_line_chart(&points, DEFAULT_WIDTH, DEFAULT_HEIGHT, &title);
+    let rgba = render_line_chart(&points, DEFAULT_WIDTH, DEFAULT_HEIGHT);
 
     // Encode RGBA → sixel string
     let sixel =

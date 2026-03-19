@@ -5,4 +5,4 @@ edition = "2021"
 description = "Library for generating image data from waveforms and line charts"
 
 [dependencies]
-plotters = { version = "0.3.7", default-features = false, features = ["bitmap_backend", "line_series", "full_palette", "ab_glyph"] }
+plotters = { version = "0.3.7", default-features = false, features = ["bitmap_backend", "line_series", "full_palette"] }

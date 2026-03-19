@@ -4,38 +4,22 @@
 //! draw into an in-memory RGB buffer, then converts it to RGBA so it is ready
 //! for downstream sixel encoding.
 //!
-//! A bundled subset of the DejaVu Sans font (Bitstream Vera licence, public
-//! domain changes) is registered on first use so that axis labels render
-//! correctly without requiring system fonts.
+//! No text or labels are rendered inside the chart, so no font infrastructure
+//! is required.
 
 use plotters::prelude::*;
-use plotters::style::register_font;
-use std::sync::OnceLock;
-
-/// Bytes of the bundled DejaVu Sans font, included at compile time.
-static FONT_BYTES: &[u8] = include_bytes!("../assets/DejaVuSans.ttf");
-
-/// Ensure the bundled font is registered with plotters exactly once.
-fn ensure_font() {
-    static INIT: OnceLock<()> = OnceLock::new();
-    INIT.get_or_init(|| {
-        register_font("sans-serif", FontStyle::Normal, FONT_BYTES)
-            .unwrap_or_else(|_| panic!("bundled DejaVuSans.ttf should be valid"));
-    });
-}
 
 /// Render a waveform from a slice of normalised samples (`-1.0 ..= 1.0`) into
 /// an RGBA image buffer.
 ///
 /// # Arguments
-/// * `samples`  – audio samples (normalised to `[-1.0, 1.0]`)
-/// * `width`    – output image width in pixels
-/// * `height`   – output image height in pixels
+/// * `samples` – audio samples (normalised to `[-1.0, 1.0]`)
+/// * `width`   – output image width in pixels
+/// * `height`  – output image height in pixels
 ///
 /// # Returns
 /// A `Vec<u8>` containing RGBA pixels (4 bytes per pixel, row-major).
 pub fn render_waveform(samples: &[f32], width: u32, height: u32) -> Vec<u8> {
-    ensure_font();
     let mut rgb_buf = vec![0u8; (width * height * 3) as usize];
 
     {
@@ -45,13 +29,11 @@ pub fn render_waveform(samples: &[f32], width: u32, height: u32) -> Vec<u8> {
 
         let x_max = samples.len().max(1) as f32;
         let mut chart = ChartBuilder::on(&root)
-            .margin(10)
-            .x_label_area_size(20)
-            .y_label_area_size(30)
+            .margin(5)
             .build_cartesian_2d(0f32..x_max, -1.0f32..1.0f32)
             .unwrap();
 
-        chart.configure_mesh().draw().unwrap();
+        chart.configure_mesh().disable_mesh().draw().unwrap();
 
         chart
             .draw_series(LineSeries::new(
@@ -76,12 +58,10 @@ pub fn render_waveform(samples: &[f32], width: u32, height: u32) -> Vec<u8> {
 /// * `points` – slice of `(x, y)` pairs
 /// * `width`  – output image width in pixels
 /// * `height` – output image height in pixels
-/// * `title`  – chart title shown at the top
 ///
 /// # Returns
 /// A `Vec<u8>` containing RGBA pixels (4 bytes per pixel, row-major).
-pub fn render_line_chart(points: &[(f64, f64)], width: u32, height: u32, title: &str) -> Vec<u8> {
-    ensure_font();
+pub fn render_line_chart(points: &[(f64, f64)], width: u32, height: u32) -> Vec<u8> {
     let mut rgb_buf = vec![0u8; (width * height * 3) as usize];
 
     {
@@ -92,14 +72,11 @@ pub fn render_line_chart(points: &[(f64, f64)], width: u32, height: u32, title: 
         let (x_min, x_max, y_min, y_max) = data_range(points);
 
         let mut chart = ChartBuilder::on(&root)
-            .caption(title, ("sans-serif", 16))
-            .margin(10)
-            .x_label_area_size(20)
-            .y_label_area_size(40)
+            .margin(5)
             .build_cartesian_2d(x_min..x_max, y_min..y_max)
             .unwrap();
 
-        chart.configure_mesh().draw().unwrap();
+        chart.configure_mesh().disable_mesh().draw().unwrap();
 
         chart
             .draw_series(LineSeries::new(points.iter().copied(), &RED))
@@ -158,7 +135,7 @@ mod tests {
     #[test]
     fn line_chart_output_size() {
         let points: Vec<(f64, f64)> = (0..50).map(|i| (i as f64, (i as f64).sin())).collect();
-        let rgba = render_line_chart(&points, 320, 200, "Test");
+        let rgba = render_line_chart(&points, 320, 200);
         assert_eq!(rgba.len(), (320 * 200 * 4) as usize);
     }
 
@@ -170,7 +147,7 @@ mod tests {
 
     #[test]
     fn empty_line_chart_does_not_panic() {
-        let rgba = render_line_chart(&[], 64, 64, "Empty");
+        let rgba = render_line_chart(&[], 64, 64);
         assert_eq!(rgba.len(), (64 * 64 * 4) as usize);
     }
 }
