@@ -46,7 +46,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let path = &args[1];
     let image = render_wav_as_image(path).unwrap_or_else(|e| {
-        eprintln!("Error reading {path}: {e}");
+        eprintln!("Error rendering waveform for {path}: {e}");
         process::exit(1);
     });
 
