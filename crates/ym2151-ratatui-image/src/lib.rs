@@ -66,7 +66,7 @@ mod tests {
     #[test]
     fn render_ym2151_as_image_from_args_with_size_returns_requested_dimensions() {
         let args = vec![
-            "ym2151-envelope-ratatui".to_string(),
+            "prog".to_string(),
             "28".to_string(),
             "12".to_string(),
             "4".to_string(),
