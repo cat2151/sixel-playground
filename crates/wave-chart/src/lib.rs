@@ -9,6 +9,8 @@
 
 use plotters::prelude::*;
 
+const MONOKAI_GREEN: RGBColor = RGBColor(166, 226, 46);
+
 /// Render a waveform from a slice of normalised samples (`-1.0 ..= 1.0`) into
 /// an RGBA image buffer.
 ///
@@ -21,28 +23,29 @@ use plotters::prelude::*;
 /// A `Vec<u8>` containing RGBA pixels (4 bytes per pixel, row-major).
 pub fn render_waveform(samples: &[f32], width: u32, height: u32) -> Vec<u8> {
     let mut rgb_buf = vec![0u8; (width * height * 3) as usize];
+    let aggregated = aggregate_waveform_columns(samples, width as usize);
 
     {
-        let root =
-            BitMapBackend::with_buffer(&mut rgb_buf, (width, height)).into_drawing_area();
-        root.fill(&WHITE).unwrap();
+        let root = BitMapBackend::with_buffer(&mut rgb_buf, (width, height)).into_drawing_area();
+        root.fill(&BLACK).unwrap();
 
-        let x_max = samples.len().max(1) as f32;
         let mut chart = ChartBuilder::on(&root)
-            .margin(5)
-            .build_cartesian_2d(0f32..x_max, -1.0f32..1.0f32)
+            .margin(0)
+            .build_cartesian_2d(0u32..width.max(1), -1.0f32..1.0f32)
             .unwrap();
 
         chart.configure_mesh().disable_mesh().draw().unwrap();
 
         chart
-            .draw_series(LineSeries::new(
-                samples
-                    .iter()
+            .draw_series(
+                aggregated
+                    .into_iter()
                     .enumerate()
-                    .map(|(i, &s)| (i as f32, s.clamp(-1.0, 1.0))),
-                &BLUE,
-            ))
+                    .filter(|(_, (min, max))| min < max)
+                    .map(|(x, (min, max))| {
+                        PathElement::new(vec![(x as u32, min), (x as u32, max)], MONOKAI_GREEN)
+                    }),
+            )
             .unwrap();
 
         root.present().unwrap();
@@ -65,8 +68,7 @@ pub fn render_line_chart(points: &[(f64, f64)], width: u32, height: u32) -> Vec<
     let mut rgb_buf = vec![0u8; (width * height * 3) as usize];
 
     {
-        let root =
-            BitMapBackend::with_buffer(&mut rgb_buf, (width, height)).into_drawing_area();
+        let root = BitMapBackend::with_buffer(&mut rgb_buf, (width, height)).into_drawing_area();
         root.fill(&WHITE).unwrap();
 
         let (x_min, x_max, y_min, y_max) = data_range(points);
@@ -98,6 +100,28 @@ fn rgb_to_rgba(rgb: &[u8]) -> Vec<u8> {
     rgb.chunks_exact(3)
         .flat_map(|p| [p[0], p[1], p[2], 255])
         .collect()
+}
+
+fn aggregate_waveform_columns(samples: &[f32], columns: usize) -> Vec<(f32, f32)> {
+    if columns == 0 {
+        return Vec::new();
+    }
+
+    if samples.is_empty() {
+        return vec![(0.0, 0.0); columns];
+    }
+
+    let mut aggregated = vec![(0.0f32, 0.0f32); columns];
+
+    for (index, &sample) in samples.iter().enumerate() {
+        let column = index * columns / samples.len();
+        let entry = &mut aggregated[column.min(columns - 1)];
+        let clamped = sample.clamp(-1.0, 1.0);
+        entry.0 = entry.0.min(clamped);
+        entry.1 = entry.1.max(clamped);
+    }
+
+    aggregated
 }
 
 /// Compute axis ranges with a small margin so the series is not clipped.
@@ -143,11 +167,25 @@ mod tests {
     fn empty_waveform_does_not_panic() {
         let rgba = render_waveform(&[], 64, 64);
         assert_eq!(rgba.len(), (64 * 64 * 4) as usize);
+        assert_eq!(&rgba[0..4], &[0, 0, 0, 255]);
     }
 
     #[test]
     fn empty_line_chart_does_not_panic() {
         let rgba = render_line_chart(&[], 64, 64);
         assert_eq!(rgba.len(), (64 * 64 * 4) as usize);
+    }
+
+    #[test]
+    fn waveform_uses_monokai_green() {
+        assert_eq!(MONOKAI_GREEN, RGBColor(166, 226, 46));
+    }
+
+    #[test]
+    fn waveform_columns_aggregate_positive_and_negative_extremes() {
+        let aggregated =
+            aggregate_waveform_columns(&[0.1, 0.4, -0.3, -0.8, 0.2, 0.7, -0.1, -0.5], 2);
+
+        assert_eq!(aggregated, vec![(-0.8, 0.4), (-0.5, 0.7)]);
     }
 }
