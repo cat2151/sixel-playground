@@ -10,8 +10,6 @@ path = "src/main.rs"
 
 [dependencies]
 crossterm = "0.29.0"
-image = { version = "0.25.10", default-features = false }
 ratatui = { version = "0.30.0", default-features = false, features = ["crossterm"] }
 ratatui-image = { version = "10.0.6", default-features = false, features = ["crossterm"] }
-wave-chart = { version = "0.1.0", path = "../../crates/wave-chart" }
-ym2151-envelope-core = { path = "../../crates/ym2151-envelope-core" }
+ym2151-ratatui-image = { path = "../../crates/ym2151-ratatui-image" }

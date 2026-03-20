@@ -1,0 +1,9 @@
+[package]
+name = "ym2151-ratatui-image"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+image = { version = "0.25.10", default-features = false }
+wave-chart = { path = "../wave-chart" }
+ym2151-envelope-core = { path = "../ym2151-envelope-core" }

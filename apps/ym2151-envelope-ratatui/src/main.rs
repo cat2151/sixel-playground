@@ -13,7 +13,6 @@ use crossterm::{
     event::{self, Event, KeyCode},
     terminal::{disable_raw_mode, enable_raw_mode},
 };
-use image::{DynamicImage, ImageBuffer, Rgba};
 use ratatui::{
     backend::CrosstermBackend,
     layout::Margin,
@@ -21,8 +20,7 @@ use ratatui::{
     Terminal,
 };
 use ratatui_image::{picker::Picker, protocol::StatefulProtocol, StatefulImage};
-use wave_chart::render_line_chart;
-use ym2151_envelope_core::{parse_args, simulate_envelope};
+use ym2151_ratatui_image::render_ym2151_as_image_from_args;
 
 struct RawModeGuard;
 
@@ -41,10 +39,7 @@ impl Drop for RawModeGuard {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
-    let params = parse_args(&args);
-    let points = simulate_envelope(&params);
-    let rgba = render_line_chart(&points, 800, 300);
-    let image = rgba_to_dynamic_image(rgba, 800, 300)?;
+    let image = render_ym2151_as_image_from_args(&args)?;
 
     let picker = Picker::from_query_stdio().unwrap_or_else(|_| Picker::halfblocks());
     let mut protocol: StatefulProtocol = picker.new_resize_protocol(image);
@@ -80,18 +75,4 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         result?;
     }
     Ok(())
-}
-
-fn rgba_to_dynamic_image(
-    rgba: Vec<u8>,
-    width: u32,
-    height: u32,
-) -> Result<DynamicImage, Box<dyn std::error::Error>> {
-    let image = ImageBuffer::<Rgba<u8>, _>::from_raw(width, height, rgba).ok_or_else(|| {
-        io::Error::new(
-            io::ErrorKind::InvalidData,
-            "failed to build image buffer from rendered RGBA bytes",
-        )
-    })?;
-    Ok(DynamicImage::ImageRgba8(image))
 }
