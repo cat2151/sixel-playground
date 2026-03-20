@@ -34,10 +34,7 @@ fn main() {
         process::exit(1);
     });
 
-    eprintln!(
-        "Loaded {} samples from '{path}'",
-        samples.len()
-    );
+    eprintln!("Loaded {} samples from '{path}'", samples.len());
 
     // Render waveform → RGBA image
     let rgba = render_waveform(&samples, DEFAULT_WIDTH, DEFAULT_HEIGHT);
