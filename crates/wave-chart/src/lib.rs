@@ -117,7 +117,11 @@ fn aggregate_waveform_columns(samples: &[f32], columns: usize) -> Vec<Option<(f3
 
     for (column, entry) in aggregated.iter_mut().enumerate() {
         let start = column * sample_count / columns;
-        let end = ((column + 1) * sample_count).div_ceil(columns);
+        let upper_bound = (column + 1) * sample_count;
+        let end = match upper_bound % columns {
+            0 => upper_bound / columns,
+            _ => upper_bound / columns + 1,
+        };
 
         if start >= sample_count || start >= end {
             continue;
@@ -127,7 +131,13 @@ fn aggregate_waveform_columns(samples: &[f32], columns: usize) -> Vec<Option<(f3
             .iter()
             .map(|sample| sample.clamp(-1.0, 1.0))
             .fold((0.0f32, 0.0f32), |(min, max), sample| {
-                (min.min(sample.min(0.0)), max.max(sample.max(0.0)))
+                if sample < 0.0 {
+                    (min.min(sample), max)
+                } else if sample > 0.0 {
+                    (min, max.max(sample))
+                } else {
+                    (min, max)
+                }
             });
 
         *entry = Some((min, max));
