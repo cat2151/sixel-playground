@@ -115,16 +115,22 @@ fn aggregate_waveform_columns(samples: &[f32], columns: usize) -> Vec<Option<(f3
     let sample_count = samples.len();
     let mut aggregated: Vec<Option<(f32, f32)>> = vec![None; columns];
 
-    for (index, &sample) in samples.iter().enumerate() {
-        let column = index * columns / sample_count;
-        let entry = &mut aggregated[column.min(columns - 1)];
-        let clamped = sample.clamp(-1.0, 1.0);
-        let min = clamped.min(0.0);
-        let max = clamped.max(0.0);
-        *entry = Some(match *entry {
-            Some((current_min, current_max)) => (current_min.min(min), current_max.max(max)),
-            None => (min, max),
-        });
+    for (column, entry) in aggregated.iter_mut().enumerate() {
+        let start = column * sample_count / columns;
+        let end = ((column + 1) * sample_count).div_ceil(columns);
+
+        if start >= sample_count || start >= end {
+            continue;
+        }
+
+        let (min, max) = samples[start..end]
+            .iter()
+            .map(|sample| sample.clamp(-1.0, 1.0))
+            .fold((0.0f32, 0.0f32), |(min, max), sample| {
+                (min.min(sample.min(0.0)), max.max(sample.max(0.0)))
+            });
+
+        *entry = Some((min, max));
     }
 
     aggregated
@@ -185,6 +191,15 @@ mod tests {
     #[test]
     fn waveform_uses_monokai_green() {
         assert_eq!(MONOKAI_GREEN, RGBColor(166, 226, 46));
+
+        let samples: Vec<f32> = (0..100).map(|i| (i as f32 / 50.0).sin()).collect();
+        let rgba = render_waveform(&samples, 64, 64);
+
+        assert!(
+            rgba.chunks_exact(4)
+                .any(|pixel| (pixel[0], pixel[1], pixel[2]) == (166, 226, 46)),
+            "rendered waveform did not contain Monokai green pixels"
+        );
     }
 
     #[test]
@@ -200,5 +215,13 @@ mod tests {
         let aggregated = aggregate_waveform_columns(&[0.0, 0.0, 0.0, 0.0], 2);
 
         assert_eq!(aggregated, vec![Some((0.0, 0.0)), Some((0.0, 0.0))]);
+    }
+
+    #[test]
+    fn short_waveform_reaches_right_edge_column() {
+        let aggregated = aggregate_waveform_columns(&[0.25, -0.5], 4);
+
+        assert_eq!(aggregated.first(), Some(&Some((0.0, 0.25))));
+        assert_eq!(aggregated.last(), Some(&Some((-0.5, 0.0))));
     }
 }
