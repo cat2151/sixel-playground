@@ -1257,6 +1257,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "wav-ratatui-image"
+version = "0.1.0"
+dependencies = [
+ "hound",
+ "image",
+ "wave-chart",
+]
+
+[[package]]
 name = "wav-viewer"
 version = "0.1.0"
 dependencies = [
@@ -1270,11 +1279,9 @@ name = "wav-viewer-ratatui"
 version = "0.1.0"
 dependencies = [
  "crossterm",
- "hound",
- "image",
  "ratatui",
  "ratatui-image",
- "wave-chart",
+ "wav-ratatui-image",
 ]
 
 [[package]]
