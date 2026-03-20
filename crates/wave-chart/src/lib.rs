@@ -41,9 +41,10 @@ pub fn render_waveform(samples: &[f32], width: u32, height: u32) -> Vec<u8> {
                 aggregated
                     .into_iter()
                     .enumerate()
-                    .filter(|(_, (min, max))| min < max)
-                    .map(|(x, (min, max))| {
-                        PathElement::new(vec![(x as u32, min), (x as u32, max)], MONOKAI_GREEN)
+                    .filter_map(|(x, column)| {
+                        column.map(|(min, max)| {
+                            PathElement::new(vec![(x as u32, min), (x as u32, max)], MONOKAI_GREEN)
+                        })
                     }),
             )
             .unwrap();
@@ -102,23 +103,28 @@ fn rgb_to_rgba(rgb: &[u8]) -> Vec<u8> {
         .collect()
 }
 
-fn aggregate_waveform_columns(samples: &[f32], columns: usize) -> Vec<(f32, f32)> {
+fn aggregate_waveform_columns(samples: &[f32], columns: usize) -> Vec<Option<(f32, f32)>> {
     if columns == 0 {
         return Vec::new();
     }
 
     if samples.is_empty() {
-        return vec![(0.0, 0.0); columns];
+        return vec![None; columns];
     }
 
-    let mut aggregated = vec![(0.0f32, 0.0f32); columns];
+    let sample_count = samples.len();
+    let mut aggregated: Vec<Option<(f32, f32)>> = vec![None; columns];
 
     for (index, &sample) in samples.iter().enumerate() {
-        let column = index * columns / samples.len();
+        let column = index * columns / sample_count;
         let entry = &mut aggregated[column.min(columns - 1)];
         let clamped = sample.clamp(-1.0, 1.0);
-        entry.0 = entry.0.min(clamped);
-        entry.1 = entry.1.max(clamped);
+        let min = clamped.min(0.0);
+        let max = clamped.max(0.0);
+        *entry = Some(match *entry {
+            Some((current_min, current_max)) => (current_min.min(min), current_max.max(max)),
+            None => (min, max),
+        });
     }
 
     aggregated
@@ -186,6 +192,13 @@ mod tests {
         let aggregated =
             aggregate_waveform_columns(&[0.1, 0.4, -0.3, -0.8, 0.2, 0.7, -0.1, -0.5], 2);
 
-        assert_eq!(aggregated, vec![(-0.8, 0.4), (-0.5, 0.7)]);
+        assert_eq!(aggregated, vec![Some((-0.8, 0.4)), Some((-0.5, 0.7))]);
+    }
+
+    #[test]
+    fn waveform_columns_preserve_flat_zero_signal() {
+        let aggregated = aggregate_waveform_columns(&[0.0, 0.0, 0.0, 0.0], 2);
+
+        assert_eq!(aggregated, vec![Some((0.0, 0.0)), Some((0.0, 0.0))]);
     }
 }

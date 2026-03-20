@@ -22,8 +22,7 @@ use icy_sixel::{SixelError, SixelImage};
 /// # Errors
 /// Returns a [`SixelError`] if encoding fails (e.g. zero-sized image).
 pub fn encode_rgba_to_sixel(rgba: &[u8], width: u32, height: u32) -> Result<String, SixelError> {
-    let image =
-        SixelImage::try_from_rgba(rgba.to_vec(), width as usize, height as usize)?;
+    let image = SixelImage::try_from_rgba(rgba.to_vec(), width as usize, height as usize)?;
     image.encode()
 }
 
