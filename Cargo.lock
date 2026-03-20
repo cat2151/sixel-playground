@@ -1512,9 +1512,17 @@ name = "ym2151-envelope-ratatui"
 version = "0.1.0"
 dependencies = [
  "crossterm",
- "image",
  "ratatui",
  "ratatui-image",
+ "ym2151-envelope-core",
+ "ym2151-ratatui-image",
+]
+
+[[package]]
+name = "ym2151-ratatui-image"
+version = "0.1.0"
+dependencies = [
+ "image",
  "wave-chart",
  "ym2151-envelope-core",
 ]
