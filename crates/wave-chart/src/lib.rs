@@ -207,16 +207,19 @@ mod tests {
             .map(|i| (i as f64, ((i as f64) / 10.0).sin()))
             .collect();
         let rgba = render_line_chart(&points, 128, 64);
+        let orange_pixels = rgba
+            .chunks_exact(4)
+            .filter(|pixel| (pixel[0], pixel[1], pixel[2]) == (255, 165, 0))
+            .count();
+        let black_pixels = rgba
+            .chunks_exact(4)
+            .filter(|pixel| (pixel[0], pixel[1], pixel[2]) == (0, 0, 0))
+            .count();
 
+        assert!(orange_pixels > 50, "rendered line chart did not contain enough orange pixels");
         assert!(
-            rgba.chunks_exact(4)
-                .any(|pixel| (pixel[0], pixel[1], pixel[2]) == (255, 165, 0)),
-            "rendered line chart did not contain orange pixels"
-        );
-        assert!(
-            rgba.chunks_exact(4)
-                .any(|pixel| (pixel[0], pixel[1], pixel[2]) == (0, 0, 0)),
-            "rendered line chart did not contain black background pixels"
+            black_pixels > (128 * 64 / 2) as usize,
+            "rendered line chart did not contain enough black background pixels"
         );
     }
 
