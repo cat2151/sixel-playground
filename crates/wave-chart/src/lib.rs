@@ -203,10 +203,12 @@ mod tests {
     fn line_chart_uses_orange_on_black() {
         assert_eq!(ORANGE, RGBColor(255, 165, 0));
 
+        let width = 128;
+        let height = 64;
         let points: Vec<(f64, f64)> = (0..100)
             .map(|i| (i as f64, ((i as f64) / 10.0).sin()))
             .collect();
-        let rgba = render_line_chart(&points, 128, 64);
+        let rgba = render_line_chart(&points, width, height);
         let orange_pixels = rgba
             .chunks_exact(4)
             .filter(|pixel| (pixel[0], pixel[1], pixel[2]) == (255, 165, 0))
@@ -216,9 +218,12 @@ mod tests {
             .filter(|pixel| (pixel[0], pixel[1], pixel[2]) == (0, 0, 0))
             .count();
 
-        assert!(orange_pixels > 50, "rendered line chart did not contain enough orange pixels");
         assert!(
-            black_pixels > (128 * 64 / 2) as usize,
+            orange_pixels > (width / 2) as usize,
+            "rendered line chart did not contain enough orange pixels"
+        );
+        assert!(
+            black_pixels > (width * height / 2) as usize,
             "rendered line chart did not contain enough black background pixels"
         );
     }
