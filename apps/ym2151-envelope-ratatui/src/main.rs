@@ -37,6 +37,13 @@ struct ParamSpec {
     max: u32,
 }
 
+struct UiLayout {
+    params_area: Rect,
+    params_inner: Rect,
+    graph_area: Rect,
+    graph_inner: Rect,
+}
+
 const PARAM_SPECS: [ParamSpec; PARAMETER_COUNT] = [
     ParamSpec {
         label: "AR",
@@ -92,7 +99,7 @@ fn build_render_args(params: &EnvParams) -> Vec<String> {
     ]
 }
 
-fn graph_inner_area(area: Rect) -> Rect {
+fn ui_layout(area: Rect) -> UiLayout {
     let block_inner = Block::default()
         .borders(Borders::ALL)
         .inner(area)
@@ -100,17 +107,30 @@ fn graph_inner_area(area: Rect) -> Rect {
             vertical: 1,
             horizontal: 1,
         });
-    let [_, graph_area] = Layout::default()
+    let [params_area, graph_area] = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Length(20), Constraint::Min(10)])
         .areas(block_inner);
-    Block::default()
+    let params_inner = Block::default()
+        .borders(Borders::ALL)
+        .inner(params_area)
+        .inner(Margin {
+            vertical: 1,
+            horizontal: 1,
+        });
+    let graph_inner = Block::default()
         .borders(Borders::ALL)
         .inner(graph_area)
         .inner(Margin {
             vertical: 1,
             horizontal: 1,
-        })
+        });
+    UiLayout {
+        params_area,
+        params_inner,
+        graph_area,
+        graph_inner,
+    }
 }
 
 fn render_size_for_graph_area(area: Rect) -> (u32, u32) {
@@ -223,7 +243,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut terminal = Terminal::new(backend)?;
     terminal.clear()?;
 
-    let mut graph_inner = graph_inner_area(terminal.size()?.into());
+    let mut graph_inner = ui_layout(terminal.size()?.into()).graph_inner;
     let mut protocol = render_protocol(&picker, &params, graph_inner)?;
     let mut selected = 0usize;
 
@@ -233,31 +253,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let block = Block::default()
                 .borders(Borders::ALL)
                 .title("YM2151 Envelope (ratatui-image) - ↑↓ select, ←→ ±1, PgUp/PgDn ±4, q quit");
-            let inner = block.inner(area).inner(Margin {
-                vertical: 1,
-                horizontal: 1,
-            });
-
-            let [params_area, graph_area] = Layout::default()
-                .direction(Direction::Horizontal)
-                .constraints([Constraint::Length(20), Constraint::Min(10)])
-                .areas(inner);
-
+            let layout = ui_layout(area);
             let params_block = Block::default().borders(Borders::ALL).title("Parameters");
-            let params_inner = params_block.inner(params_area).inner(Margin {
-                vertical: 1,
-                horizontal: 1,
-            });
             let graph_block = Block::default().borders(Borders::ALL).title("Live Graph");
-            graph_inner = graph_block.inner(graph_area).inner(Margin {
-                vertical: 1,
-                horizontal: 1,
-            });
+            graph_inner = layout.graph_inner;
 
             f.render_widget(block, area);
-            f.render_widget(params_block, params_area);
-            f.render_widget(Paragraph::new(parameter_lines(&params, selected)), params_inner);
-            f.render_widget(graph_block, graph_area);
+            f.render_widget(params_block, layout.params_area);
+            f.render_widget(
+                Paragraph::new(parameter_lines(&params, selected)),
+                layout.params_inner,
+            );
+            f.render_widget(graph_block, layout.graph_area);
             f.render_stateful_widget(StatefulImage::default(), graph_inner, &mut protocol);
         })?;
 
@@ -270,10 +277,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 AppCommand::Quit => break,
             },
             Event::Resize(_, _) => {
-                let resized_graph_inner = graph_inner_area(terminal.size()?.into());
-                if render_size_for_graph_area(resized_graph_inner)
-                    != render_size_for_graph_area(graph_inner)
-                {
+                let resized_graph_inner = ui_layout(terminal.size()?.into()).graph_inner;
+                let resized_render_size = render_size_for_graph_area(resized_graph_inner);
+                let current_render_size = render_size_for_graph_area(graph_inner);
+                if resized_render_size != current_render_size {
                     graph_inner = resized_graph_inner;
                     protocol = render_protocol(&picker, &params, graph_inner)?;
                 }
