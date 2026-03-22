@@ -15,7 +15,7 @@ use crossterm::{
 };
 use ratatui::{
     backend::CrosstermBackend,
-    layout::{Constraint, Direction, Layout, Margin},
+    layout::{Constraint, Direction, Layout, Margin, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
@@ -23,10 +23,14 @@ use ratatui::{
 };
 use ratatui_image::{picker::Picker, protocol::StatefulProtocol, StatefulImage};
 use ym2151_envelope_core::{parse_args, EnvParams};
-use ym2151_ratatui_image::render_ym2151_as_image_from_args;
+use ym2151_ratatui_image::render_ym2151_as_image_from_args_with_size;
 
 const PARAMETER_COUNT: usize = 5;
 const PAGE_STEP: i32 = 4;
+const GRAPH_RENDER_SCALE_X: u32 = 4;
+const GRAPH_RENDER_SCALE_Y: u32 = 8;
+const MIN_GRAPH_RENDER_WIDTH: u32 = 64;
+const MIN_GRAPH_RENDER_HEIGHT: u32 = 32;
 
 struct ParamSpec {
     label: &'static str,
@@ -88,11 +92,40 @@ fn build_render_args(params: &EnvParams) -> Vec<String> {
     ]
 }
 
+fn graph_inner_area(area: Rect) -> Rect {
+    let block_inner = Block::default()
+        .borders(Borders::ALL)
+        .inner(area)
+        .inner(Margin {
+            vertical: 1,
+            horizontal: 1,
+        });
+    let [_, graph_area] = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Length(20), Constraint::Min(10)])
+        .areas(block_inner);
+    Block::default()
+        .borders(Borders::ALL)
+        .inner(graph_area)
+        .inner(Margin {
+            vertical: 1,
+            horizontal: 1,
+        })
+}
+
+fn render_size_for_graph_area(area: Rect) -> (u32, u32) {
+    let width = (u32::from(area.width) * GRAPH_RENDER_SCALE_X).max(MIN_GRAPH_RENDER_WIDTH);
+    let height = (u32::from(area.height) * GRAPH_RENDER_SCALE_Y).max(MIN_GRAPH_RENDER_HEIGHT);
+    (width, height)
+}
+
 fn render_protocol(
     picker: &Picker,
     params: &EnvParams,
+    graph_inner: Rect,
 ) -> Result<StatefulProtocol, Box<dyn std::error::Error>> {
-    let image = render_ym2151_as_image_from_args(&build_render_args(params))?;
+    let (width, height) = render_size_for_graph_area(graph_inner);
+    let image = render_ym2151_as_image_from_args_with_size(&build_render_args(params), width, height)?;
     Ok(picker.new_resize_protocol(image))
 }
 
@@ -183,15 +216,16 @@ fn parameter_lines(params: &EnvParams, selected: usize) -> Vec<Line<'static>> {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
     let mut params = parse_args(&args);
-
     let picker = Picker::from_query_stdio().unwrap_or_else(|_| Picker::halfblocks());
-    let mut protocol = render_protocol(&picker, &params)?;
-    let mut selected = 0usize;
 
     let _raw_mode_guard = RawModeGuard::acquire()?;
     let backend = CrosstermBackend::new(io::stdout());
     let mut terminal = Terminal::new(backend)?;
     terminal.clear()?;
+
+    let mut graph_inner = graph_inner_area(terminal.size()?.into());
+    let mut protocol = render_protocol(&picker, &params, graph_inner)?;
+    let mut selected = 0usize;
 
     loop {
         terminal.draw(|f| {
@@ -215,7 +249,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 horizontal: 1,
             });
             let graph_block = Block::default().borders(Borders::ALL).title("Live Graph");
-            let graph_inner = graph_block.inner(graph_area).inner(Margin {
+            graph_inner = graph_block.inner(graph_area).inner(Margin {
                 vertical: 1,
                 horizontal: 1,
             });
@@ -227,14 +261,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             f.render_stateful_widget(StatefulImage::default(), graph_inner, &mut protocol);
         })?;
 
-        if let Event::Key(key) = event::read()? {
-            match handle_key(key.code, &mut selected, &mut params) {
+        match event::read()? {
+            Event::Key(key) => match handle_key(key.code, &mut selected, &mut params) {
                 AppCommand::Continue => {}
                 AppCommand::RefreshImage => {
-                    protocol = render_protocol(&picker, &params)?;
+                    protocol = render_protocol(&picker, &params, graph_inner)?;
                 }
                 AppCommand::Quit => break,
+            },
+            Event::Resize(_, _) => {
+                let resized_graph_inner = graph_inner_area(terminal.size()?.into());
+                if render_size_for_graph_area(resized_graph_inner)
+                    != render_size_for_graph_area(graph_inner)
+                {
+                    graph_inner = resized_graph_inner;
+                    protocol = render_protocol(&picker, &params, graph_inner)?;
+                }
             }
+            _ => {}
         }
     }
 
@@ -301,5 +345,25 @@ mod tests {
             AppCommand::RefreshImage
         ));
         assert_eq!(params.d1r, EnvParams::default().d1r);
+    }
+
+    #[test]
+    fn render_size_for_graph_area_scales_from_current_pane_size() {
+        let graph_area = Rect::new(0, 0, 100, 20);
+
+        assert_eq!(
+            render_size_for_graph_area(graph_area),
+            (100 * GRAPH_RENDER_SCALE_X, 20 * GRAPH_RENDER_SCALE_Y)
+        );
+    }
+
+    #[test]
+    fn render_size_for_graph_area_respects_minimums() {
+        let graph_area = Rect::new(0, 0, 1, 1);
+
+        assert_eq!(
+            render_size_for_graph_area(graph_area),
+            (MIN_GRAPH_RENDER_WIDTH, MIN_GRAPH_RENDER_HEIGHT)
+        );
     }
 }
