@@ -171,6 +171,26 @@ fn data_range(points: &[(f64, f64)]) -> (f64, f64, f64, f64) {
 mod tests {
     use super::*;
 
+    const ORANGE_RED_MIN: u8 = 96;
+    const ORANGE_GREEN_MIN: u8 = 48;
+    const ORANGE_BLUE_MAX: u8 = 32;
+    const ORANGE_PIXEL_RATIO_DIVISOR: u32 = 64;
+
+    /// Returns the RGB triplet from a single RGBA pixel.
+    fn rgb(pixel: &[u8]) -> (u8, u8, u8) {
+        (pixel[0], pixel[1], pixel[2])
+    }
+
+    /// Matches the orange line color with relaxed thresholds so anti-aliased
+    /// pixels still count as part of the rendered series.
+    fn is_orange_like(pixel: &[u8]) -> bool {
+        let (red, green, blue) = rgb(pixel);
+        red >= ORANGE_RED_MIN
+            && green >= ORANGE_GREEN_MIN
+            && blue <= ORANGE_BLUE_MAX
+            && red > green
+    }
+
     #[test]
     fn waveform_output_size() {
         let samples: Vec<f32> = (0..100).map(|i| (i as f32 / 50.0).sin()).collect();
@@ -196,7 +216,10 @@ mod tests {
     fn empty_line_chart_does_not_panic() {
         let rgba = render_line_chart(&[], 64, 64);
         assert_eq!(rgba.len(), (64 * 64 * 4) as usize);
-        assert_eq!(&rgba[0..4], &[0, 0, 0, 255]);
+        assert!(
+            rgba.chunks_exact(4).all(|pixel| rgb(pixel) == (0, 0, 0)),
+            "empty line chart should render with an all-black background"
+        );
     }
 
     #[test]
@@ -209,17 +232,18 @@ mod tests {
             .map(|i| (i as f64, ((i as f64) / 10.0).sin()))
             .collect();
         let rgba = render_line_chart(&points, width, height);
+        let min_orange_pixels = (width * height / ORANGE_PIXEL_RATIO_DIVISOR) as usize;
         let orange_pixels = rgba
             .chunks_exact(4)
-            .filter(|pixel| (pixel[0], pixel[1], pixel[2]) == (255, 165, 0))
+            .filter(|pixel| is_orange_like(pixel))
             .count();
         let black_pixels = rgba
             .chunks_exact(4)
-            .filter(|pixel| (pixel[0], pixel[1], pixel[2]) == (0, 0, 0))
+            .filter(|pixel| rgb(pixel) == (0, 0, 0))
             .count();
 
         assert!(
-            orange_pixels > (width / 2) as usize,
+            orange_pixels > min_orange_pixels,
             "rendered line chart did not contain enough orange pixels"
         );
         assert!(
