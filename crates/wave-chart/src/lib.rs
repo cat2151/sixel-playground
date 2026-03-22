@@ -10,6 +10,7 @@
 use plotters::prelude::*;
 
 const MONOKAI_GREEN: RGBColor = RGBColor(166, 226, 46);
+const ORANGE: RGBColor = RGBColor(255, 165, 0);
 
 /// Render a waveform from a slice of normalised samples (`-1.0 ..= 1.0`) into
 /// an RGBA image buffer.
@@ -70,7 +71,7 @@ pub fn render_line_chart(points: &[(f64, f64)], width: u32, height: u32) -> Vec<
 
     {
         let root = BitMapBackend::with_buffer(&mut rgb_buf, (width, height)).into_drawing_area();
-        root.fill(&WHITE).unwrap();
+        root.fill(&BLACK).unwrap();
 
         let (x_min, x_max, y_min, y_max) = data_range(points);
 
@@ -82,7 +83,7 @@ pub fn render_line_chart(points: &[(f64, f64)], width: u32, height: u32) -> Vec<
         chart.configure_mesh().disable_mesh().draw().unwrap();
 
         chart
-            .draw_series(LineSeries::new(points.iter().copied(), &RED))
+            .draw_series(LineSeries::new(points.iter().copied(), &ORANGE))
             .unwrap();
 
         root.present().unwrap();
@@ -195,6 +196,28 @@ mod tests {
     fn empty_line_chart_does_not_panic() {
         let rgba = render_line_chart(&[], 64, 64);
         assert_eq!(rgba.len(), (64 * 64 * 4) as usize);
+        assert_eq!(&rgba[0..4], &[0, 0, 0, 255]);
+    }
+
+    #[test]
+    fn line_chart_uses_orange_on_black() {
+        assert_eq!(ORANGE, RGBColor(255, 165, 0));
+
+        let points: Vec<(f64, f64)> = (0..100)
+            .map(|i| (i as f64, ((i as f64) / 10.0).sin()))
+            .collect();
+        let rgba = render_line_chart(&points, 128, 64);
+
+        assert!(
+            rgba.chunks_exact(4)
+                .any(|pixel| (pixel[0], pixel[1], pixel[2]) == (255, 165, 0)),
+            "rendered line chart did not contain orange pixels"
+        );
+        assert!(
+            rgba.chunks_exact(4)
+                .any(|pixel| (pixel[0], pixel[1], pixel[2]) == (0, 0, 0)),
+            "rendered line chart did not contain black background pixels"
+        );
     }
 
     #[test]
