@@ -1514,6 +1514,7 @@ dependencies = [
  "crossterm",
  "ratatui",
  "ratatui-image",
+ "ym2151-envelope-core",
  "ym2151-ratatui-image",
 ]
 
