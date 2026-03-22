@@ -37,6 +37,7 @@ struct ParamSpec {
     max: u32,
 }
 
+#[derive(Clone, Copy)]
 struct UiLayout {
     params_area: Rect,
     params_inner: Rect,
@@ -142,9 +143,9 @@ fn render_size_for_graph_area(area: Rect) -> (u32, u32) {
 fn render_protocol(
     picker: &Picker,
     params: &EnvParams,
-    graph_inner: Rect,
+    render_size: (u32, u32),
 ) -> Result<StatefulProtocol, Box<dyn std::error::Error>> {
-    let (width, height) = render_size_for_graph_area(graph_inner);
+    let (width, height) = render_size;
     let image = render_ym2151_as_image_from_args_with_size(&build_render_args(params), width, height)?;
     Ok(picker.new_resize_protocol(image))
 }
@@ -243,20 +244,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut terminal = Terminal::new(backend)?;
     terminal.clear()?;
 
-    let mut graph_inner = ui_layout(terminal.size()?.into()).graph_inner;
-    let mut protocol = render_protocol(&picker, &params, graph_inner)?;
+    let mut current_render_size =
+        render_size_for_graph_area(ui_layout(terminal.size()?.into()).graph_inner);
+    let mut protocol = render_protocol(&picker, &params, current_render_size)?;
     let mut selected = 0usize;
 
     loop {
+        let layout = ui_layout(terminal.size()?.into());
         terminal.draw(|f| {
             let area = f.area();
             let block = Block::default()
                 .borders(Borders::ALL)
                 .title("YM2151 Envelope (ratatui-image) - ↑↓ select, ←→ ±1, PgUp/PgDn ±4, q quit");
-            let layout = ui_layout(area);
             let params_block = Block::default().borders(Borders::ALL).title("Parameters");
             let graph_block = Block::default().borders(Borders::ALL).title("Live Graph");
-            graph_inner = layout.graph_inner;
 
             f.render_widget(block, area);
             f.render_widget(params_block, layout.params_area);
@@ -265,24 +266,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 layout.params_inner,
             );
             f.render_widget(graph_block, layout.graph_area);
-            f.render_stateful_widget(StatefulImage::default(), graph_inner, &mut protocol);
+            f.render_stateful_widget(StatefulImage::default(), layout.graph_inner, &mut protocol);
         })?;
 
         match event::read()? {
             Event::Key(key) => match handle_key(key.code, &mut selected, &mut params) {
                 AppCommand::Continue => {}
                 AppCommand::RefreshImage => {
-                    protocol = render_protocol(&picker, &params, graph_inner)?;
+                    current_render_size = render_size_for_graph_area(layout.graph_inner);
+                    protocol = render_protocol(&picker, &params, current_render_size)?;
                 }
                 AppCommand::Quit => break,
             },
             Event::Resize(_, _) => {
                 let resized_graph_inner = ui_layout(terminal.size()?.into()).graph_inner;
                 let resized_render_size = render_size_for_graph_area(resized_graph_inner);
-                let current_render_size = render_size_for_graph_area(graph_inner);
                 if resized_render_size != current_render_size {
-                    graph_inner = resized_graph_inner;
-                    protocol = render_protocol(&picker, &params, graph_inner)?;
+                    current_render_size = resized_render_size;
+                    protocol = render_protocol(&picker, &params, current_render_size)?;
                 }
             }
             _ => {}
