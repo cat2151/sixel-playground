@@ -1,0 +1,8 @@
+title: "sixel-playground"
+description: "sixel-playground"
+theme: jekyll-theme-slate
+github:
+  is_project_page: true
+  repository_url: https://github.com/cat2151/sixel-playground
+plugins:
+  - jekyll-sitemap
